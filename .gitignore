@@ -57,6 +57,8 @@ typings/
 # Mac files
 .DS_Store
 
+.next
+
 # Yarn
 yarn-error.log
 .pnp/
