@@ -28,7 +28,9 @@ export default function Login() {
       const result = await UserService.login(uid);
       BrowserUtility.save(CommonConstant.token, uid);
       BrowserUtility.saveObj(CommonConstant.user, result);
-      router.push(`/?auditId=${auditId}`);
+      setTimeout(() => {
+        router.push(`/?auditId=${auditId}`);
+      }, 1000);
     } catch (error) {
       setError("Something went wrong");
       console.log(error);
