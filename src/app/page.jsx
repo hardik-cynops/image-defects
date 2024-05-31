@@ -93,7 +93,6 @@ export default function Home() {
       await ImageDefectService.save(temp);
       reset();
       refreshData();
-      router.push("/");
     } catch (error) {
       setError("Something went wrong");
       console.log(error);
@@ -122,7 +121,7 @@ export default function Home() {
       )}
       <div className="row pt-2">
         <div className="col-4">
-          <ListGroup>
+          <ListGroup style={{ overflow: "auto", maxHeight: "80vh" }}>
             {(images || []).map((item) => (
               <ListGroup.Item
                 key={item.imageId}
