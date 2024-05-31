@@ -156,7 +156,7 @@ export default function Home() {
             {ncId && (
               <>
                 <div style={{ position: "relative" }}>
-                  <img src={"/image.svg"} onClick={onClickSvg} />
+                  <img src={currentImage?.imagePath} onClick={onClickSvg} />
                   {points.map((item) => (
                     <span
                       onClick={() => onRemove(item)}
