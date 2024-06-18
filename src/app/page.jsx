@@ -46,11 +46,12 @@ export default function Home() {
 
   useEffect(() => {
     if (images.length > 0 && !currentImage?.imageId) {
-      auditClick(images[0]);
+      auditClick(images[0].imageId);
     }
   }, [images, currentImage]);
 
-  const auditClick = (image) => {
+  const auditClick = (imageId) => {
+    const image = images.find((x) => x.imageId === +imageId);
     setCurrentImage({ ...image });
     reset();
   };
@@ -119,90 +120,96 @@ export default function Home() {
           <span className="visually-hidden">Loading...</span>
         </Spinner>
       )}
-      <div className="row pt-2">
-        <div className="col-4">
-          <ListGroup style={{ overflow: "auto", maxHeight: "80vh" }}>
-            {(images || []).map((item) => (
-              <ListGroup.Item
-                key={item.imageId}
-                className="btn btn-primary"
-                onClick={() => auditClick(item)}
-                active={item.imageId === currentImage?.imageId}
+      <div className={`row pt-2 vh-100 ${!ncId && "align-items-center"}`}>
+        <div
+          className={`col-12 ${ncId && "d-flex justify-content-center gap-20"}`}
+        >
+          <Form.Group className="mb-3">
+            <Form.Label>Select Image</Form.Label>
+            <Form.Select
+              aria-label="Select Image"
+              value={currentImage?.imageId}
+              onChange={(e) => auditClick(e.target.value)}
+              disabled={ncId}
+            >
+              <option>Select</option>
+              {(images || []).map((item) => (
+                <option value={item.imageId} key={item.imageId}>
+                  {item.department}
+                </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+
+          {currentImage?.imageId && (
+            <Form.Group className="mb-3">
+              <Form.Label>Select NC</Form.Label>
+              <Form.Select
+                aria-label="Select NC"
+                value={ncId}
+                onChange={(e) => onNCChange(e.target.value)}
               >
-                {item.department}
-              </ListGroup.Item>
-            ))}
-          </ListGroup>
+                <option>Select</option>
+                {(auditData?.auditNCData || []).map((item) => (
+                  <option value={item.unique_id} key={item.unique_id}>
+                    {item.full_description}
+                  </option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+          )}
         </div>
-        {currentImage?.imageId && (
-          <div className="col">
-            <div>
-              <Form.Group className="mb-3">
-                <Form.Label>Select NC</Form.Label>
-                <Form.Select
-                  aria-label="Select NC"
-                  value={ncId}
-                  onChange={(e) => onNCChange(e.target.value)}
-                >
-                  <option>Select</option>
-                  {(auditData?.auditNCData || []).map((item) => (
-                    <option value={item.unique_id} key={item.unique_id}>
-                      {item.full_description}
-                    </option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
+
+        {ncId && (
+          <div className="image-container">
+            <div style={{ position: "relative" }}>
+              <img src={currentImage?.imagePath} onClick={onClickSvg} />
+              {points.map((item) => (
+                <span
+                  onClick={() => onRemove(item)}
+                  key={`${item.x}-${item.y}`}
+                  style={{
+                    ...styles.points,
+                    left: item.x,
+                    top: item.y,
+                  }}
+                />
+              ))}
             </div>
-            {ncId && (
-              <>
-                <div style={{ position: "relative" }}>
-                  <img src={currentImage?.imagePath} onClick={onClickSvg} />
-                  {points.map((item) => (
-                    <span
-                      onClick={() => onRemove(item)}
-                      key={`${item.x}-${item.y}`}
-                      style={{
-                        ...styles.points,
-                        left: item.x,
-                        top: item.y,
-                      }}
+            <div>
+              <div>
+                <b>Total Defects:</b>
+                <span>{points.length}</span>
+              </div>
+              <div>
+                <Form.Group className="mb-3">
+                  <Form.Label>Comment</Form.Label>
+                  <Form.Control
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    as="textarea"
+                    rows={3}
+                  />
+                </Form.Group>
+              </div>
+              <div>
+                <Button onClick={submitDefect}>
+                  {processing && (
+                    <Spinner
+                      as="span"
+                      animation="grow"
+                      size="sm"
+                      role="status"
+                      aria-hidden="true"
                     />
-                  ))}
-                </div>
-                <div>
-                  <b>Total Defects:</b>
-                  <span>{points.length}</span>
-                </div>
-                <div>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Comment</Form.Label>
-                    <Form.Control
-                      value={comment}
-                      onChange={(e) => setComment(e.target.value)}
-                      as="textarea"
-                      rows={3}
-                    />
-                  </Form.Group>
-                </div>
-                <div>
-                  <Button onClick={submitDefect}>
-                    {processing && (
-                      <Spinner
-                        as="span"
-                        animation="grow"
-                        size="sm"
-                        role="status"
-                        aria-hidden="true"
-                      />
-                    )}
-                    Submit
-                  </Button>{" "}
-                  <Button variant="light" onClick={reset}>
-                    Cancel
-                  </Button>
-                </div>
-              </>
-            )}
+                  )}
+                  Submit
+                </Button>{" "}
+                <Button variant="light" onClick={reset}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
           </div>
         )}
       </div>
