@@ -1,6 +1,6 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import { getAuditData, getImages } from "@/hooks/images";
+import React, { useMemo, useState } from "react";
+import { getAuditData } from "@/hooks/images";
 import { BrowserUtility } from "@/utility/browser-utility";
 import { CommonConstant } from "@/utility/constant";
 import { ImageDefectService } from "@/utility/services";
@@ -32,7 +32,7 @@ export default function Home() {
     return;
   }
 
-  const { data: images, loading } = getImages();
+  const [images, setImages] = useState([]);
   const {
     data: auditData,
     loading: auditLoading,
@@ -44,16 +44,31 @@ export default function Home() {
   const [comment, setComment] = useState("");
   const [ncId, setNCId] = useState("");
 
-  useEffect(() => {
-    if (images.length > 0 && !currentImage?.imageId) {
-      auditClick(images[0].imageId);
+  const currentNc = useMemo(() => {
+    if (ncId && auditData) {
+      const tempData = auditData.auditNCData.find((x) => x.unique_id === +ncId);
+      return tempData;
     }
-  }, [images, currentImage]);
+    return null;
+  }, [auditData, ncId]);
+
+  // useEffect(() => {
+  //   if (images.length > 0 && !currentImage?.imageId) {
+  //     auditClick(images[0].imageId);
+  //   }
+  // }, [images, currentImage]);
 
   const auditClick = (imageId) => {
+    reset();
     const image = images.find((x) => x.imageId === +imageId);
     setCurrentImage({ ...image });
-    reset();
+    const temp = auditData.imageData.find(
+      (x) => x.ncId === +ncId && x.imageId === +imageId,
+    );
+    if (temp) {
+      setPoints(JSON.parse(temp.imageString));
+      setComment(temp.comment);
+    }
   };
 
   const onClickSvg = (evt) => {
@@ -72,7 +87,7 @@ export default function Home() {
 
   const reset = () => {
     setComment("");
-    setNCId("");
+    setCurrentImage(null);
     setPoints([]);
   };
 
@@ -93,6 +108,7 @@ export default function Home() {
 
       await ImageDefectService.save(temp);
       reset();
+      setNCId(null);
       refreshData();
     } catch (error) {
       setError("Something went wrong");
@@ -104,55 +120,60 @@ export default function Home() {
 
   const onNCChange = (value) => {
     setNCId(value);
+    console.log("value", value);
     if (value) {
-      const temp = auditData.imageData.find((x) => x.ncId === +value);
-      if (temp) {
-        setPoints(JSON.parse(temp.imageString));
-        setComment(temp.comment);
-      }
+      reset();
+      const tempData = auditData.auditNCData.find(
+        (x) => x.unique_id === +value,
+      );
+      setImages(tempData.ncImages);
     }
   };
 
   return (
     <div className="container">
-      {(loading || auditLoading) && (
+      {auditLoading && (
         <Spinner animation="border" role="status">
           <span className="visually-hidden">Loading...</span>
         </Spinner>
       )}
-      <div className={`row pt-2 vh-100 ${!ncId && "align-items-center"}`}>
+      <div
+        className={`row pt-2 vh-100 ${
+          !currentImage?.imageId && "align-items-center"
+        }`}
+      >
         <div
-          className={`col-12 ${ncId && "d-flex justify-content-center gap-20"}`}
+          className={`col-12 ${
+            currentImage?.imageId && "d-flex justify-content-center gap-20"
+          }`}
         >
           <Form.Group className="mb-3">
-            <Form.Label>Select Image</Form.Label>
+            <Form.Label>Select NC</Form.Label>
             <Form.Select
-              aria-label="Select Image"
-              value={currentImage?.imageId}
-              onChange={(e) => auditClick(e.target.value)}
-              disabled={ncId}
+              aria-label="Select NC"
+              value={ncId}
+              onChange={(e) => onNCChange(e.target.value)}
             >
               <option>Select</option>
-              {(images || []).map((item) => (
-                <option value={item.imageId} key={item.imageId}>
-                  {item.department}
+              {(auditData?.auditNCData || []).map((item) => (
+                <option value={item.unique_id} key={item.unique_id}>
+                  {item.full_description}
                 </option>
               ))}
             </Form.Select>
           </Form.Group>
-
-          {currentImage?.imageId && (
+          {ncId && (
             <Form.Group className="mb-3">
-              <Form.Label>Select NC</Form.Label>
+              <Form.Label>Select Image</Form.Label>
               <Form.Select
-                aria-label="Select NC"
-                value={ncId}
-                onChange={(e) => onNCChange(e.target.value)}
+                aria-label="Select Image"
+                value={currentImage?.imageId}
+                onChange={(e) => auditClick(e.target.value)}
               >
                 <option>Select</option>
-                {(auditData?.auditNCData || []).map((item) => (
-                  <option value={item.unique_id} key={item.unique_id}>
-                    {item.full_description}
+                {(images || []).map((item) => (
+                  <option value={item.imageId} key={item.imageId}>
+                    {item.department}
                   </option>
                 ))}
               </Form.Select>
@@ -160,7 +181,7 @@ export default function Home() {
           )}
         </div>
 
-        {ncId && (
+        {currentImage?.imageId && (
           <div className="image-container">
             <div style={{ position: "relative" }}>
               <img src={currentImage?.imagePath} onClick={onClickSvg} />
@@ -177,7 +198,21 @@ export default function Home() {
               ))}
             </div>
             <div>
-              <div>
+              <div className="mb-4">
+                <ListGroup>
+                  <ListGroup.Item>
+                    N/C Type : {currentNc?.defect_type}
+                  </ListGroup.Item>
+                  <ListGroup.Item>
+                    Severity Level :{" "}
+                    {currentNc?.major_minor ? "Major" : "Minor"}
+                  </ListGroup.Item>
+                  <ListGroup.Item>
+                    No of Rejected : {currentNc?.rejected_qty}
+                  </ListGroup.Item>
+                </ListGroup>
+              </div>
+              <div className="mb-2">
                 <b>Total Defects:</b>
                 <span>{points.length}</span>
               </div>
@@ -188,7 +223,7 @@ export default function Home() {
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
                     as="textarea"
-                    rows={3}
+                    rows={5}
                   />
                 </Form.Group>
               </div>
