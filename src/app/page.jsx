@@ -33,6 +33,8 @@ export default function Home() {
   }
 
   const [images, setImages] = useState([]);
+
+  const [purchaseOrders, setPurchaseOrders] = useState([]);
   const {
     data: auditData,
     loading: auditLoading,
@@ -43,6 +45,7 @@ export default function Home() {
   const [processing, setProcessing] = useState("");
   const [comment, setComment] = useState("");
   const [ncId, setNCId] = useState("");
+  const [selectedPO, setSelectedPO] = useState([]);
 
   const currentNc = useMemo(() => {
     if (ncId && auditData) {
@@ -52,11 +55,25 @@ export default function Home() {
     return null;
   }, [auditData, ncId]);
 
-  // useEffect(() => {
-  //   if (images.length > 0 && !currentImage?.imageId) {
-  //     auditClick(images[0].imageId);
-  //   }
-  // }, [images, currentImage]);
+  const poPoints = useMemo(() => {
+    if (currentImage?.imageId) {
+      const temp = auditData.imageData.find(
+        (x) => x.ncId === +ncId && x.imageId === +currentImage.imageId,
+      );
+      if (temp) {
+        return [
+          ...temp.supplierImageData
+            .filter(
+              (x) =>
+                x.imageId === +currentImage.imageId &&
+                selectedPO.includes(`${x.audit_type}:${x.purchase_order_nbr}`),
+            )
+            .map((x) => JSON.parse(x.imageString)),
+        ];
+      }
+    }
+    return [];
+  }, [currentImage, selectedPO]);
 
   const auditClick = (imageId) => {
     reset();
@@ -65,7 +82,11 @@ export default function Home() {
     const temp = auditData.imageData.find(
       (x) => x.ncId === +ncId && x.imageId === +imageId,
     );
+
     if (temp) {
+      setPurchaseOrders(
+        temp.supplierImageData.filter((x) => x.imageId === +imageId),
+      );
       setPoints(JSON.parse(temp.imageString));
       setComment(temp.comment);
     }
@@ -89,6 +110,8 @@ export default function Home() {
     setComment("");
     setCurrentImage(null);
     setPoints([]);
+    setSelectedPO([]);
+    setPurchaseOrders([]);
   };
 
   const onRemove = (item) => {
@@ -120,13 +143,20 @@ export default function Home() {
 
   const onNCChange = (value) => {
     setNCId(value);
-    console.log("value", value);
     if (value) {
       reset();
       const tempData = auditData.auditNCData.find(
         (x) => x.unique_id === +value,
       );
       setImages(tempData.ncImages);
+    }
+  };
+
+  const toggleSelectPO = (item) => {
+    if (selectedPO.includes(item)) {
+      setSelectedPO(selectedPO.filter((x) => x !== item));
+    } else {
+      setSelectedPO([...selectedPO, item]);
     }
   };
 
@@ -196,8 +226,45 @@ export default function Home() {
                   }}
                 />
               ))}
+              {poPoints.map((item) => (
+                <span
+                  key={`${item.x}-${item.y}`}
+                  style={{
+                    ...styles.points,
+                    backgroundColor: "green",
+                    left: item.x,
+                    top: item.y,
+                  }}
+                />
+              ))}
             </div>
             <div>
+              <div className="mb-4">
+                <ListGroup>
+                  <ListGroup.Item>
+                    <b>Purchase Orders</b>
+                  </ListGroup.Item>
+                  {purchaseOrders.map((item) => (
+                    <ListGroup.Item
+                      key={`${item.audit_type}:${item.purchase_order_nbr}`}
+                    >
+                      <Form.Check // prettier-ignore
+                        type={"checkbox"}
+                        id={`${item.audit_type}:${item.purchase_order_nbr}`}
+                        label={`${item.audit_type}: ${item.purchase_order_nbr}`}
+                        value={selectedPO.includes(
+                          `${item.audit_type}:${item.purchase_order_nbr}`,
+                        )}
+                        onChange={() =>
+                          toggleSelectPO(
+                            `${item.audit_type}:${item.purchase_order_nbr}`,
+                          )
+                        }
+                      />
+                    </ListGroup.Item>
+                  ))}
+                </ListGroup>
+              </div>
               <div className="mb-4">
                 <ListGroup>
                   <ListGroup.Item>
@@ -213,7 +280,7 @@ export default function Home() {
                 </ListGroup>
               </div>
               <div className="mb-2">
-                <b>Total Defects:</b>
+                <b>Total Defects: </b>
                 <span>{points.length}</span>
               </div>
               <div>
