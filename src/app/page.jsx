@@ -35,6 +35,7 @@ export default function Home() {
   const [images, setImages] = useState([]);
 
   const [purchaseOrders, setPurchaseOrders] = useState([]);
+  const [auditTypes, setAuditTypes] = useState([]);
   const {
     data: auditData,
     loading: auditLoading,
@@ -46,6 +47,7 @@ export default function Home() {
   const [comment, setComment] = useState("");
   const [ncId, setNCId] = useState("");
   const [selectedPO, setSelectedPO] = useState([]);
+  const [selectedAuditTypes, setSelectedAuditTypes] = useState([]);
 
   const currentNc = useMemo(() => {
     if (ncId && auditData) {
@@ -60,20 +62,23 @@ export default function Home() {
       const temp = auditData.imageData.find(
         (x) => x.ncId === +ncId && x.imageId === +currentImage.imageId,
       );
-      if (temp) {
+      if (temp && (selectedPO.length > 0 || selectedAuditTypes.length > 0)) {
         return [
           ...temp.supplierImageData
             .filter(
               (x) =>
                 x.imageId === +currentImage.imageId &&
-                selectedPO.includes(`${x.audit_type}:${x.purchase_order_nbr}`),
+                (selectedPO.length === 0 ||
+                  selectedPO.includes(x.purchase_order_nbr)) &&
+                (selectedAuditTypes.length === 0 ||
+                  selectedAuditTypes.includes(x.audit_type)),
             )
             .map((x) => JSON.parse(x.imageString)),
-        ];
+        ].flat();
       }
     }
     return [];
-  }, [currentImage, selectedPO]);
+  }, [currentImage, selectedPO, selectedAuditTypes]);
 
   const auditClick = (imageId) => {
     reset();
@@ -84,9 +89,18 @@ export default function Home() {
     );
 
     if (temp) {
-      setPurchaseOrders(
-        temp.supplierImageData.filter((x) => x.imageId === +imageId),
+      const tempImages = temp.supplierImageData.filter(
+        (x) => x.imageId === +imageId,
       );
+      setPurchaseOrders(
+        tempImages.filter(
+          (obj1, i, arr) =>
+            arr.findIndex(
+              (obj2) => obj2.purchase_order_nbr === obj1.purchase_order_nbr,
+            ) === i,
+        ),
+      );
+      setAuditTypes([...new Set(tempImages.map((x) => x.audit_type))]);
       setPoints(JSON.parse(temp.imageString));
       setComment(temp.comment);
     }
@@ -111,7 +125,9 @@ export default function Home() {
     setCurrentImage(null);
     setPoints([]);
     setSelectedPO([]);
+    setSelectedAuditTypes([]);
     setPurchaseOrders([]);
+    setAuditTypes([]);
   };
 
   const onRemove = (item) => {
@@ -157,6 +173,14 @@ export default function Home() {
       setSelectedPO(selectedPO.filter((x) => x !== item));
     } else {
       setSelectedPO([...selectedPO, item]);
+    }
+  };
+
+  const toggleAuditType = (item) => {
+    if (selectedAuditTypes.includes(item)) {
+      setSelectedAuditTypes(selectedAuditTypes.filter((x) => x !== item));
+    } else {
+      setSelectedAuditTypes([...selectedAuditTypes, item]);
     }
   };
 
@@ -239,26 +263,42 @@ export default function Home() {
               ))}
             </div>
             <div>
+              {auditTypes.length > 0 && (
+                <div className="mb-4">
+                  <ListGroup>
+                    <ListGroup.Item>
+                      <b>Audit Types</b>
+                    </ListGroup.Item>
+                    {auditTypes.map((item) => (
+                      <ListGroup.Item key={`${item}`}>
+                        <Form.Check // prettier-ignore
+                          type={"checkbox"}
+                          id={item}
+                          label={item}
+                          value={selectedAuditTypes.includes(item)}
+                          onChange={() => toggleAuditType(item)}
+                        />
+                      </ListGroup.Item>
+                    ))}
+                  </ListGroup>
+                </div>
+              )}
               <div className="mb-4">
                 <ListGroup>
                   <ListGroup.Item>
                     <b>Purchase Orders</b>
                   </ListGroup.Item>
                   {purchaseOrders.map((item) => (
-                    <ListGroup.Item
-                      key={`${item.audit_type}:${item.purchase_order_nbr}`}
-                    >
+                    <ListGroup.Item key={`${item.purchase_order_nbr}`}>
                       <Form.Check // prettier-ignore
                         type={"checkbox"}
-                        id={`${item.audit_type}:${item.purchase_order_nbr}`}
-                        label={`${item.audit_type}: ${item.purchase_order_nbr}`}
+                        id={`${item.purchase_order_nbr}`}
+                        label={` ${item.purchase_order_nbr}`}
                         value={selectedPO.includes(
-                          `${item.audit_type}:${item.purchase_order_nbr}`,
+                          `${item.purchase_order_nbr}`,
                         )}
                         onChange={() =>
-                          toggleSelectPO(
-                            `${item.audit_type}:${item.purchase_order_nbr}`,
-                          )
+                          toggleSelectPO(`${item.purchase_order_nbr}`)
                         }
                       />
                     </ListGroup.Item>
